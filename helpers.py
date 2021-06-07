@@ -1,9 +1,78 @@
 import re
 import pandas as pd
 import operator 
+import numpy as np
+from sklearn.feature_extraction.text import CountVectorizer
 
 # Add 'datatype' column that indicates if the record is original wiki answer as 0, training data 1, test data 2, onto 
-# the dataframe - uses stratified random sampling (with seed) to sample by task & plagiarism amount 
+# the dataframe - uses stratified random sampling (with seed) to sample by task & plagiarism amount
+
+#condition to assign numeric values to plagarism categories
+def to_numeric(row):
+    if row['Category'] == 'cut':
+        return 3
+    if row['Category'] == 'non':
+        return 0
+    if row['Category'] == 'heavy':
+        return 1
+    if row['Category'] == 'light':
+        return 2
+    return -1
+
+#condition to create new column
+def to_class_col(row):    
+    if row['Category'] in [3,2,1]:
+        return 1
+    if row['Category'] == 0:
+        return 0
+    return -1
+    
+# Function to find the n-grams array
+def to_ngrams_array(df, n, answer_filename):
+
+    task = df.loc[df['File'] == answer_filename, 'Task'].iloc[0]
+    #print(task)
+
+    orig_file = df.loc[(df['File'].str.contains('^orig_')) & (df['Task'] == task), 'File'].iloc[0]
+    #print(orig_file,'\n')
+
+    aanswer_text = df.loc[df['File'] == answer_filename, 'Text'].iloc[0]
+    source_text = df.loc[df['File'] == orig_file, 'Text'].iloc[0]
+
+    # set n
+    n = 1
+
+    # instantiate an ngram counter
+    counts = CountVectorizer(analyzer='word', ngram_range=(n,n))
+    print(counts)
+
+    # create array of n-gram counts for the answer and source text
+    ngrams = counts.fit_transform([aanswer_text, source_text])
+    ngram_array = ngrams.toarray()
+
+    return ngram_array
+
+# Function to calculate the containment value
+def cal_containment(ngram_array):
+
+    intersection_list = np.amin(ngram_array, axis=0)
+
+    #debug
+    #print(intersection_list)
+
+    # sum up number of the intersection counts    
+    intersection = np.sum(intersection_list)
+
+    # count up the number of n-grams in the answer text
+    answer_idx = 0
+    answer_cnt = np.sum(ngram_array[answer_idx])
+
+    # normalize and get final containment value
+    containment_val =  intersection / answer_cnt
+
+    return containment_val
+
+    
 
 # Use function to label datatype for training 1 or test 2 
 def create_datatype(df, train_value, test_value, datatype_var, compare_dfcolumn, operator_of_compare, value_of_compare,
