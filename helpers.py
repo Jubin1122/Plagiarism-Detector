@@ -36,18 +36,15 @@ def to_ngrams_array(df, n, answer_filename):
     orig_file = df.loc[(df['File'].str.contains('^orig_')) & (df['Task'] == task), 'File'].iloc[0]
     #print(orig_file,'\n')
 
-    aanswer_text = df.loc[df['File'] == answer_filename, 'Text'].iloc[0]
+    answer_text = df.loc[df['File'] == answer_filename, 'Text'].iloc[0]
     source_text = df.loc[df['File'] == orig_file, 'Text'].iloc[0]
-
-    # set n
-    n = 1
 
     # instantiate an ngram counter
     counts = CountVectorizer(analyzer='word', ngram_range=(n,n))
-    print(counts)
+    #print(counts)
 
     # create array of n-gram counts for the answer and source text
-    ngrams = counts.fit_transform([aanswer_text, source_text])
+    ngrams = counts.fit_transform([answer_text, source_text])
     ngram_array = ngrams.toarray()
 
     return ngram_array
