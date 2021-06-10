@@ -1,53 +1,73 @@
-# torch imports
-import torch.nn.functional as F
-import torch.nn as nn
+from __future__ import print_function
 
+import argparse
+import os
+import pandas as pd
 
-## TODO: Complete this classifier
-class BinaryClassifier(nn.Module):
+# sklearn.externals.joblib is deprecated in 0.21 and will be removed in 0.23. 
+# from sklearn.externals import joblib
+# Import joblib package directly
+from sklearn.externals import joblib
+
+## TODO: Import any additional libraries you need to define a model
+from sklearn.naive_bayes import GaussianNB
+
+# Provided model load function
+def model_fn(model_dir):
+    """Load model from the model_dir. This is the same model that is saved
+    in the main if statement.
     """
-    Define a neural network that performs binary classification.
-    The network should accept your number of features as input, and produce 
-    a single sigmoid value, that can be rounded to a label: 0 or 1, as output.
+    print("Loading model.")
     
-    Notes on training:
-    To train a binary classifier in PyTorch, use BCELoss.
-    BCELoss is binary cross entropy loss, documentation: https://pytorch.org/docs/stable/nn.html#torch.nn.BCELoss
-    """
-
-    ## TODO: Define the init function, the input params are required (for loading code in train.py to work)
-    def __init__(self, input_features, hidden_dim, output_dim):
-        """
-        Initialize the model by setting up linear layers.
-        Use the input parameters to help define the layers of your model.
-        :param input_features: the number of input features in your training/test data
-        :param hidden_dim: helps define the number of nodes in the hidden layer(s)
-        :param output_dim: the number of outputs you want to produce
-        """
-        super(BinaryClassifier, self).__init__()
-
-        # define any initial layers, here
-        self.fc1 = nn.Linear(input_dim, hidden_dim)
-        self.fc2 = nn.Linear(hidden_dim, output_dim)
-        self.drop = nn.Dropout(0.3)
-        # sigmoid layer
-        self.sig = nn.Sigmoid()
-
+    # load using joblib
+    model = joblib.load(os.path.join(model_dir, "model.joblib"))
+    print("Done loading model.")
     
-    ## TODO: Define the feedforward behavior of the network
-    def forward(self, x):
-        """
-        Perform a forward pass of our model on input features, x.
-        :param x: A batch of input features of size (batch_size, input_features)
-        :return: A single, sigmoid-activated value as output
-        """
-        
-        # define the feedforward behavior
-        out = F.relu(self.fc1(x)) # activation on hidden layer
-        out = self.drop(out)
-        out = self.fc2(out)
-        
-        return self.sig(out) # returning class score
-        
-        
+    return model
+
+
+## TODO: Complete the main code
+if __name__ == '__main__':
     
+    # All of the model parameters and training parameters are sent as arguments
+    # when this script is executed, during a training job
+    
+    # Here we set up an argument parser to easily access the parameters
+    parser = argparse.ArgumentParser()
+
+    # SageMaker parameters, like the directories for training data and saving models; set automatically
+    # Do not need to change
+    parser.add_argument('--output-data-dir', type=str, default=os.environ['SM_OUTPUT_DATA_DIR'])
+    parser.add_argument('--model-dir', type=str, default=os.environ['SM_MODEL_DIR'])
+    parser.add_argument('--data-dir', type=str, default=os.environ['SM_CHANNEL_TRAIN'])
+    
+    ## TODO: Add any additional arguments that you will need to pass into your model
+    
+    # args holds all passed-in arguments
+    args = parser.parse_args()
+
+    # Read in csv training file
+    training_dir = args.data_dir
+    train_data = pd.read_csv(os.path.join(training_dir, "train.csv"), header=None, names=None)
+
+    # Labels are in the first column
+    train_y = train_data.iloc[:,0]
+    train_x = train_data.iloc[:,1:]
+    
+    
+    ## --- Your code here --- ##
+    
+
+    ## TODO: Define a model 
+    model = GaussianNB()
+    
+    
+    ## TODO: Train the model
+    model.fit(train_x,train_y)
+    
+    
+    ## --- End of your code  --- ##
+    
+
+    # Save the trained model
+    joblib.dump(model, os.path.join(args.model_dir, "model.joblib"))
